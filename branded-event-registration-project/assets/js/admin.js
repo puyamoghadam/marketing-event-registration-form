@@ -5,8 +5,51 @@ const editableElementIds = [
     'edit-logo', 'edit-title', 'edit-subtitle', 'edit-date', 'edit-time', 'edit-about',
     'edit-p1-img', 'edit-p1-name', 'edit-p1-title', 'edit-p1-company',
     'edit-p2-img', 'edit-p2-name', 'edit-p2-title', 'edit-p2-company',
-    'edit-p3-img', 'edit-p3-name', 'edit-p3-title', 'edit-p3-company'
+    'edit-p3-img', 'edit-p3-name', 'edit-p3-title', 'edit-p3-company',
+    'edit-banner'
 ];
+
+/**
+ * Optimizes an uploaded image file into a compressed JPEG data URL
+ */
+function readFileAsOptimizedDataUrl(file, maxWidth = 1600, quality = 0.78) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function setBannerBackground(url) {
+    const banner = document.getElementById('edit-banner');
+    if (!banner) return;
+    if (url && url.trim() !== '') {
+        banner.style.backgroundImage = `url("${url}")`;
+        banner.dataset.bgUrl = url;
+    } else {
+        banner.style.backgroundImage = '';
+        delete banner.dataset.bgUrl;
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -18,6 +61,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reveal floating admin control toolbar
     const adminPanel = document.getElementById('admin-panel');
     if (adminPanel) adminPanel.classList.remove('hidden');
+
+    // Reveal hero banner upload buttons
+    const adminBannerControls = document.getElementById('admin-banner-controls');
+    if (adminBannerControls) adminBannerControls.classList.remove('hidden');
+
+    const bannerEl = document.getElementById('edit-banner');
+    if (bannerEl) {
+        bannerEl.classList.add('outline-dashed', 'outline-2', 'outline-amber-400');
+    }
+
+    const bannerFileInput = document.getElementById('hero-banner-file-input');
+    const bannerUploadBtn = document.getElementById('admin-banner-upload-btn');
+    const bannerUrlBtn = document.getElementById('admin-banner-url-btn');
+
+    if (bannerUploadBtn && bannerFileInput) {
+        bannerUploadBtn.addEventListener('click', () => bannerFileInput.click());
+        bannerFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                bannerUploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+                const optimizedData = await readFileAsOptimizedDataUrl(file);
+                setBannerBackground(optimizedData);
+            } catch (err) {
+                console.error("Banner upload error:", err);
+                alert("Could not process this image file. Try another file or paste an image URL.");
+            } finally {
+                bannerUploadBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Upload Banner Image';
+            }
+        });
+    }
+
+    if (bannerUrlBtn) {
+        bannerUrlBtn.addEventListener('click', () => {
+            const current = (bannerEl && bannerEl.dataset.bgUrl) ? bannerEl.dataset.bgUrl : '';
+            const newUrl = prompt("Enter the image URL for the hero banner:", current);
+            if (newUrl !== null) {
+                setBannerBackground(newUrl.trim());
+            }
+        });
+    }
 
     editableElementIds.forEach(id => {
         const el = document.getElementById(id);
@@ -33,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     el.src = newUrl.trim();
                 }
             });
-        } else {
+        } else if (id !== 'edit-banner') {
             el.contentEditable = 'true';
             el.classList.add('editable-text-target');
         }
@@ -52,7 +136,13 @@ document.addEventListener('DOMContentLoaded', () => {
         editableElementIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                eventDetails[id] = el.tagName === 'IMG' ? el.src : el.innerHTML.trim();
+                if (id === 'edit-banner') {
+                    eventDetails[id] = el.dataset.bgUrl || '';
+                } else if (el.tagName === 'IMG') {
+                    eventDetails[id] = el.src;
+                } else {
+                    eventDetails[id] = el.innerHTML.trim();
+                }
             }
         });
 
