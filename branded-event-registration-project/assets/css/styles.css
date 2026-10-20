@@ -1,0 +1,55 @@
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    scroll-behavior: smooth;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Admin Live Editor Visual Borders */
+.editable-text-target {
+    outline: 2px dashed #f59e0b !important;
+    outline-offset: 3px !important;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, outline-color 0.2s ease;
+}
+
+.editable-text-target:hover {
+    background-color: rgba(254, 243, 199, 0.4);
+    outline-color: #d97706 !important;
+}
+
+.editable-text-target:focus {
+    background-color: rgba(254, 243, 199, 0.7);
+    outline: 2px solid #2563eb !important;
+}
+
+.editable-image-target {
+    cursor: pointer !important;
+    outline: 3px dashed #f59e0b !important;
+    outline-offset: 3px !important;
+    position: relative;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.editable-image-target:hover {
+    filter: brightness(0.92);
+    transform: scale(1.02);
+}
+
+/* Form input focus transitions */
+input:focus, select:focus, textarea:focus {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
