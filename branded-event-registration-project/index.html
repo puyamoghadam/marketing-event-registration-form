@@ -3,9 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Registration</title>
+    <title>Event Portal - Project Source & Downloader</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for 1-click in-browser project ZIP download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Inter Font & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        pre code {
+            tab-size: 2;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 sticky top-0 z-50 px-4 sm:px-6 py-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+                <i class="fa-solid fa-folder-tree text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold text-white flex items-center gap-2">
+                    Event Registration Portal
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Complete Package</span>
+                </h1>
+                <p class="text-xs text-slate-400">Production-ready folder bundle with Google Sheets backend</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <!-- View Live Preview Toggle Button -->
+            <button id="toggle-preview-btn" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition-all flex items-center gap-1.5 active:scale-95">
+                <i class="fa-solid fa-eye text-brand-400"></i>
+                <span id="preview-btn-text">Test Live Page</span>
+            </button>
+
+            <!-- Download Complete ZIP Button -->
+            <button id="download-zip-btn" class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 active:scale-95">
+                <i class="fa-solid fa-file-zipper text-sm"></i>
+                <span>Download Project (.ZIP)</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- Sidebar: Project File Explorer -->
+        <aside class="w-full lg:w-72 bg-slate-800/60 border-r border-slate-700/80 flex flex-col flex-shrink-0">
+            <div class="p-3.5 border-b border-slate-700/80 flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-slate-400 text-xs"></i>
+                    Project Files (7)
+                </span>
+                <span class="text-[11px] text-slate-400 bg-slate-700/60 px-2 py-0.5 rounded">All Combined</span>
+            </div>
+
+            <!-- File List Tree -->
+            <div id="file-list" class="p-2 space-y-1 overflow-y-auto custom-scrollbar flex-1 text-sm font-mono">
+                <!-- Injected via JavaScript -->
+            </div>
+
+            <!-- Deployment Tip Banner -->
+            <div class="p-3 m-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-200">
+                <p class="font-semibold text-brand-300 flex items-center gap-1.5 mb-1">
+                    <i class="fa-solid fa-circle-info"></i> How to use:
+                </p>
+                <p class="text-slate-300 leading-relaxed text-[11px]">
+                    Click <strong>Download Project (.ZIP)</strong>, extract to a folder, and double-click <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">index.html</code> to test locally or push to GitHub Pages!
+                </p>
+            </div>
+        </aside>
+
+        <!-- Center Workspace: File Viewer & Live Preview Modal -->
+        <main class="flex-1 flex flex-col bg-slate-950 min-h-[500px] overflow-hidden relative">
+
+            <!-- File Metadata Bar -->
+            <div id="code-header" class="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+                <div class="flex items-center gap-2 text-slate-300">
+                    <i id="active-file-icon" class="fa-solid fa-code text-brand-400"></i>
+                    <span id="active-file-name" class="font-semibold text-white">index.html</span>
+                    <span id="active-file-size" class="text-slate-400 text-[11px]">(0 KB)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="copy-file-btn" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center gap-1">
+                        <i class="fa-regular fa-copy"></i>
+                        <span id="copy-btn-label">Copy File</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Editor / Viewer Container -->
+            <div id="code-viewer-container" class="flex-1 overflow-auto p-4 custom-scrollbar bg-slate-950 font-mono text-xs sm:text-sm leading-relaxed text-slate-300">
+                <pre class="m-0"><code id="code-display" class="block"></code></pre>
+            </div>
+
+            <!-- Live Interactive Test Preview Frame (Hidden by default) -->
+            <div id="preview-container" class="hidden absolute inset-0 z-20 bg-slate-900 flex flex-col">
+                <div class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2 text-slate-300">
+                        <span class="inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="font-semibold text-white">Live Form & Admin Preview</span>
+                        <span class="text-slate-400 text-[11px]">(Rendered directly from combined source)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="toggle-admin-preview-btn" class="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-xs font-medium hover:bg-amber-500/30 transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                            <span id="admin-mode-text">Toggle Admin Mode (?admin=true)</span>
+                        </button>
+                        <button id="close-preview-btn" class="px-2 py-1 bg-slate-700 text-slate-300 hover:text-white rounded text-xs">
+                            <i class="fa-solid fa-xmark"></i> Close Preview
+                        </button>
+                    </div>
+                </div>
+                <iframe id="preview-iframe" class="w-full flex-1 border-0 bg-white" title="Web App Preview"></iframe>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Embedded File Definitions -->
+    <script>
+        const projectFiles = [
+            {
+                name: "index.html",
+                path: "index.html",
+                icon: "fa-brands fa-html5 text-orange-500",
+                type: "html",
+                content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Registration</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"><\/script>
     <!-- Inter Font & FontAwesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -34,7 +205,7 @@
                 }
             }
         }
-    </script>
+    <\/script>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased selection:bg-brand-500 selection:text-white">
 
@@ -68,9 +239,25 @@
         </div>
     </header>
 
-    <!-- Hero Banner with Event Details -->
-    <div class="bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 text-white py-14 sm:py-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Hero Banner with Background Image Support -->
+    <div id="edit-banner" class="relative bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 bg-cover bg-center text-white py-14 sm:py-20 transition-all duration-300">
+        <!-- Contrast Overlay -->
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-[1px] pointer-events-none"></div>
+
+        <!-- Hidden File Input for Banner Upload in Admin Mode -->
+        <input type="file" id="hero-banner-file-input" accept="image/*" class="hidden">
+
+        <!-- Admin Overlay Controls for Banner -->
+        <div id="admin-banner-controls" class="hidden absolute top-4 right-4 z-30 flex items-center gap-2">
+            <button type="button" id="admin-banner-upload-btn" class="bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 transition-all">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Upload Banner Image
+            </button>
+            <button type="button" id="admin-banner-url-btn" class="bg-slate-900/90 hover:bg-slate-900 text-amber-300 border border-amber-400/50 text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 transition-all">
+                <i class="fa-solid fa-link"></i> Image URL
+            </button>
+        </div>
+
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="max-w-3xl">
                 <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-sm font-medium mb-6 border border-white/10">
                     <span class="w-2 h-2 rounded-full bg-red-400 animate-ping"></span>
@@ -225,8 +412,644 @@
     <!-- Apps Script Web App Deployment URL -->
     <script>
         const scriptURL = 'https://script.google.com/macros/s/AKfycbzWJ_FtI3TmT9m-Lnl-Q51ppLp3Cy7vcLo0xjWOTr2zJky7zjmOwYK6Q2ezj8F8pm4a/exec';
+    <\/script>
+    <script src="assets/js/form.js"><\/script>
+    <script src="assets/js/admin.js"><\/script>
+</body>
+</html>`
+            },
+            {
+                name: "styles.css",
+                path: "assets/css/styles.css",
+                icon: "fa-brands fa-css3-alt text-blue-400",
+                type: "css",
+                content: `body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    scroll-behavior: smooth;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Admin Live Editor Visual Borders */
+.editable-text-target {
+    outline: 2px dashed #f59e0b !important;
+    outline-offset: 3px !important;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, outline-color 0.2s ease;
+}
+
+.editable-text-target:hover {
+    background-color: rgba(254, 243, 199, 0.4);
+    outline-color: #d97706 !important;
+}
+
+.editable-text-target:focus {
+    background-color: rgba(254, 243, 199, 0.7);
+    outline: 2px solid #2563eb !important;
+}
+
+.editable-image-target {
+    cursor: pointer !important;
+    outline: 3px dashed #f59e0b !important;
+    outline-offset: 3px !important;
+    position: relative;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.editable-image-target:hover {
+    filter: brightness(0.92);
+    transform: scale(1.02);
+}
+
+/* Form input focus transitions */
+input:focus, select:focus, textarea:focus {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}`
+            },
+            {
+                name: "form.js",
+                path: "assets/js/form.js",
+                icon: "fa-brands fa-js text-yellow-400",
+                type: "javascript",
+                content: `/**
+ * Loads dynamic form fields and CMS marketing content from Google Apps Script.
+ */
+async function loadDataFromGoogle() {
+    try {
+        const response = await fetch(scriptURL);
+        const data = await response.json();
+        
+        // 1. Build dynamic form fields if supplied in FormConfig tab
+        if (data.fields && data.fields.length > 0) {
+            buildForm(data.fields);
+        } else {
+            // Safe fallback schema
+            buildForm([
+                { id: 'firstName', label: 'First Name', type: 'text', required: true, width: 'half' },
+                { id: 'lastName', label: 'Last Name', type: 'text', required: true, width: 'half' },
+                { id: 'email', label: 'Work Email', type: 'email', required: true, width: 'full' }
+            ]);
+        }
+
+        // 2. Hydrate updated event copy & presenter pictures from EventConfig tab
+        if (data.eventDetails) {
+            Object.keys(data.eventDetails).forEach(id => {
+                const el = document.getElementById(id);
+                if (el && data.eventDetails[id]) {
+                    if (el.tagName === 'IMG') {
+                        el.src = data.eventDetails[id];
+                    } else {
+                        el.innerHTML = data.eventDetails[id];
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.warn("Could not load dynamic configuration; using default schema:", error);
+        buildForm([
+            { id: 'firstName', label: 'First Name', type: 'text', required: true, width: 'half' },
+            { id: 'lastName', label: 'Last Name', type: 'text', required: true, width: 'half' },
+            { id: 'email', label: 'Work Email', type: 'email', required: true, width: 'full' }
+        ]);
+    }
+}
+
+/**
+ * Assembles HTML input fields based on column configurations.
+ * @param {Array<Object>} fields 
+ */
+function buildForm(fields) {
+    let htmlContent = '';
+    let halfRowOpen = false;
+
+    fields.forEach((field, index) => {
+        const isRequired = String(field.required).toLowerCase() === 'true';
+        const widthClass = field.width === 'half' ? 'w-full sm:w-1/2' : 'w-full';
+        const requiredAsterisk = isRequired ? '<span class="text-red-500">*</span>' : '';
+        
+        const inputElement = \`
+            <div class="\${widthClass}">
+                <label for="\${field.id}" class="block text-sm font-medium text-gray-700 mb-1">\${field.label} \${requiredAsterisk}</label>
+                <input 
+                    type="\${field.type || 'text'}" 
+                    id="\${field.id}" 
+                    name="\${field.id}" 
+                    \${isRequired ? 'required' : ''} 
+                    placeholder="\${field.label}"
+                    class="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 bg-gray-50 focus:bg-white transition-all shadow-sm"
+                >
+            </div>
+        \`;
+
+        if (field.width === 'half') {
+            if (!halfRowOpen) {
+                htmlContent += '<div class="flex flex-col sm:flex-row gap-4">';
+                halfRowOpen = true;
+            }
+            htmlContent += inputElement;
+            if (!fields[index + 1] || fields[index + 1].width !== 'half') {
+                htmlContent += '</div>';
+                halfRowOpen = false;
+            }
+        } else {
+            htmlContent += inputElement;
+        }
+    });
+
+    const fieldsContainer = document.getElementById('dynamic-fields-container');
+    const formLoader = document.getElementById('form-loader');
+    const registrationForm = document.getElementById('registrationForm');
+
+    if (fieldsContainer) fieldsContainer.innerHTML = htmlContent;
+    if (formLoader) formLoader.classList.add('hidden');
+    if (registrationForm) registrationForm.classList.remove('hidden');
+}
+
+/**
+ * Intercepts form submission and posts values directly to the connected Google Sheet.
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    loadDataFromGoogle();
+
+    const registrationForm = document.getElementById('registrationForm');
+    if (!registrationForm) return;
+
+    registrationForm.addEventListener('submit', async function(e) {
+        e.preventDefault(); 
+        const submitBtn = document.getElementById('submitBtn');
+        const originalBtnContent = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span> Submitting...</span>';
+        submitBtn.disabled = true;
+
+        const errorBanner = document.getElementById('error-message');
+        const successBanner = document.getElementById('success-message');
+        if (errorBanner) errorBanner.classList.add('hidden');
+
+        // Compile fields and attach ISO timestamp
+        const formData = new FormData(this);
+        formData.append('timestamp', new Date().toISOString());
+        const searchParams = new URLSearchParams(formData);
+
+        try {
+            await fetch(scriptURL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: searchParams 
+            });
+            
+            this.style.display = 'none';
+            if (successBanner) successBanner.classList.remove('hidden');
+        } catch (error) {
+            console.error("Submission failed:", error);
+            if (errorBanner) errorBanner.classList.remove('hidden');
+            submitBtn.innerHTML = originalBtnContent;
+            submitBtn.disabled = false;
+        }
+    });
+});`
+            },
+            {
+                name: "admin.js",
+                path: "assets/js/admin.js",
+                icon: "fa-brands fa-js text-yellow-400",
+                type: "javascript",
+                content: `/**
+ * Target DOM element IDs that can be visually edited when in Admin Mode.
+ */
+const editableElementIds = [
+    'edit-logo', 'edit-title', 'edit-subtitle', 'edit-date', 'edit-time', 'edit-about',
+    'edit-p1-img', 'edit-p1-name', 'edit-p1-title', 'edit-p1-company',
+    'edit-p2-img', 'edit-p2-name', 'edit-p2-title', 'edit-p2-company',
+    'edit-p3-img', 'edit-p3-name', 'edit-p3-title', 'edit-p3-company'
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === 'true';
+
+    // Activate only when ?admin=true is present in the browser query string
+    if (!isAdmin) return;
+
+    // Reveal floating admin control toolbar
+    const adminPanel = document.getElementById('admin-panel');
+    if (adminPanel) adminPanel.classList.remove('hidden');
+
+    editableElementIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (el.tagName === 'IMG') {
+            el.classList.add('editable-image-target');
+            el.title = "Click to update image URL";
+            el.addEventListener('click', () => {
+                const currentSrc = el.getAttribute('src') || '';
+                const newUrl = prompt("Enter the new image URL:", currentSrc);
+                if (newUrl && newUrl.trim() !== '') {
+                    el.src = newUrl.trim();
+                }
+            });
+        } else {
+            el.contentEditable = 'true';
+            el.classList.add('editable-text-target');
+        }
+    });
+
+    const saveBtn = document.getElementById('save-layout-btn');
+    if (!saveBtn) return;
+
+    saveBtn.addEventListener('click', async () => {
+        const originalContent = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span>Saving...</span>';
+        saveBtn.disabled = true;
+
+        // Collect all updated content
+        const eventDetails = {};
+        editableElementIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                eventDetails[id] = el.tagName === 'IMG' ? el.src : el.innerHTML.trim();
+            }
+        });
+
+        const formData = new URLSearchParams();
+        formData.append('action', 'saveEventDetails');
+        formData.append('data', JSON.stringify(eventDetails));
+
+        try {
+            await fetch(scriptURL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: formData 
+            });
+            
+            saveBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i><span>Saved to Google Sheet!</span>';
+            setTimeout(() => {
+                saveBtn.innerHTML = originalContent;
+                saveBtn.disabled = false;
+            }, 3000);
+        } catch (err) {
+            console.error("Save error:", err);
+            saveBtn.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i><span>Failed to Save</span>';
+            setTimeout(() => {
+                saveBtn.innerHTML = originalContent;
+                saveBtn.disabled = false;
+            }, 3000);
+        }
+    });
+});`
+            },
+            {
+                name: "Code.gs",
+                path: "backend/Code.gs",
+                icon: "fa-solid fa-gear text-emerald-400",
+                type: "javascript",
+                content: `// Sheet names matching tabs in your Google Spreadsheet
+const ATTENDEE_SHEET = 'Sheet1';
+const CONFIG_SHEET = 'FormConfig';
+const EVENT_SHEET = 'EventConfig';
+
+function doGet(e) {
+  try {
+    const doc = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 1. Fetch Dynamic Form Fields
+    let fields = [];
+    const configSheet = doc.getSheetByName(CONFIG_SHEET);
+    if (configSheet && configSheet.getLastRow() > 1) {
+      const data = configSheet.getDataRange().getValues();
+      const headers = data[0];
+      for (let i = 1; i < data.length; i++) {
+        let field = {};
+        for (let j = 0; j < headers.length; j++) {
+          field[headers[j]] = data[i][j];
+        }
+        fields.push(field);
+      }
+    } else {
+      // Safe defaults
+      fields = [
+        { id: 'firstName', label: 'First Name', type: 'text', required: true, width: 'half' },
+        { id: 'lastName', label: 'Last Name', type: 'text', required: true, width: 'half' },
+        { id: 'email', label: 'Work Email', type: 'email', required: true, width: 'full' }
+      ];
+    }
+    
+    // 2. Fetch Live Event CMS Details (Text & Images)
+    let eventDetails = {};
+    const eventSheet = doc.getSheetByName(EVENT_SHEET);
+    if (eventSheet && eventSheet.getLastRow() > 1) {
+      const rows = eventSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        const id = rows[i][0];
+        const val = rows[i][1];
+        if (id) {
+          eventDetails[id] = val;
+        }
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ 
+      fields: fields, 
+      eventDetails: eventDetails 
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      error: error.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  try {
+    const doc = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Path A: Admin Live Editor Save Request
+    if (e.parameter && e.parameter.action === 'saveEventDetails') {
+      let eventSheet = doc.getSheetByName(EVENT_SHEET);
+      if (!eventSheet) {
+        eventSheet = doc.insertSheet(EVENT_SHEET);
+      }
+      
+      const payload = JSON.parse(e.parameter.data || '{}');
+      eventSheet.clear();
+      eventSheet.appendRow(['elementId', 'contentValue']);
+      
+      const rows = [];
+      for (const key in payload) {
+        if (payload.hasOwnProperty(key)) {
+          rows.push([key, payload[key]]);
+        }
+      }
+      
+      if (rows.length > 0) {
+        eventSheet.getRange(2, 1, rows.length, 2).setValues(rows);
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({ result: 'success', savedKeys: rows.length }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Path B: Attendee Form Registration
+    const sheet = doc.getSheetByName(ATTENDEE_SHEET);
+    if (!sheet) {
+      throw new Error("Target attendee sheet '" + ATTENDEE_SHEET + "' not found.");
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const nextRow = sheet.getLastRow() + 1;
+    
+    const newRow = headers.map(function(header) {
+      return header === 'timestamp' ? new Date() : (e.parameter[header] || '');
+    });
+    
+    sheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+    
+    return ContentService.createTextOutput(JSON.stringify({ result: 'success', row: nextRow }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ result: 'error', error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`
+            },
+            {
+                name: ".gitignore",
+                path: ".gitignore",
+                icon: "fa-brands fa-git-alt text-red-400",
+                type: "git",
+                content: `# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node / IDE files
+node_modules/
+.vscode/
+.idea/
+*.log
+
+# Environment variables
+.env
+.env.local`
+            },
+            {
+                name: "README.md",
+                path: "README.md",
+                icon: "fa-regular fa-file-lines text-slate-300",
+                type: "markdown",
+                content: `# Branded Event Registration Portal
+
+A lightweight, serverless event registration portal integrated with Google Sheets and Google Apps Script as the back-end database and dynamic content management system (CMS).
+
+## 📁 Repository Structure
+\`\`\`text
+branded-event-portal/
+├── assets/
+│   ├── css/
+│   │   └── styles.css
+│   └── js/
+│       ├── admin.js
+│       └── form.js
+├── backend/
+│   └── Code.gs
+├── .gitignore
+├── README.md
+└── index.html
+\`\`\`
+
+## 🚀 Quick Setup & GitHub Pages Deployment
+1. Upload this folder to a new GitHub repository.
+2. In your repo: **Settings** > **Pages** > select \`main\` branch and \`/(root)\` folder.
+3. In Google Sheets: **Extensions** > **Apps Script**, paste \`backend/Code.gs\`, and click **Deploy** > **New deployment** (Execute as: Me, Access: Anyone).
+4. Update the \`scriptURL\` in \`index.html\` if you create a new deployment.
+5. Visit your live site! Append \`?admin=true\` to edit copy and speaker headshots in your browser.`
+            }
+        ];
+
+        let activeFileIndex = 0;
+        let isLiveAdmin = false;
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        function renderFileList() {
+            const listEl = document.getElementById('file-list');
+            listEl.innerHTML = '';
+
+            projectFiles.forEach((file, index) => {
+                const isActive = index === activeFileIndex;
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-3 py-2 rounded-lg flex items-center justify-between transition-colors ${
+                    isActive ? 'bg-brand-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-700/60'
+                }`;
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="${file.icon} text-sm"></i>
+                        <span class="truncate">${file.path}</span>
+                    </div>
+                `;
+                btn.onclick = () => selectFile(index);
+                listEl.appendChild(btn);
+            });
+        }
+
+        function selectFile(index) {
+            activeFileIndex = index;
+            renderFileList();
+            const file = projectFiles[index];
+
+            document.getElementById('active-file-name').innerText = file.path;
+            document.getElementById('active-file-icon').className = file.icon;
+            
+            const byteSize = new Blob([file.content]).size;
+            const kbSize = (byteSize / 1024).toFixed(1);
+            document.getElementById('active-file-size').innerText = `(${kbSize} KB)`;
+
+            document.getElementById('code-display').innerHTML = escapeHtml(file.content);
+        }
+
+        document.getElementById('download-zip-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('download-zip-btn');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Zipping folder...</span>';
+                btn.disabled = true;
+
+                const zip = new JSZip();
+
+                // Add each file to its respective relative path within the zip archive
+                projectFiles.forEach(file => {
+                    zip.file(file.path, file.content);
+                });
+
+                const content = await zip.generateAsync({ type: 'blob' });
+                saveAs(content, 'branded-event-registration-project.zip');
+
+                btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Downloaded!</span>';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2500);
+
+            } catch (err) {
+                console.error("ZIP creation failed:", err);
+                btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span>Error Zipping</span>';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            }
+        });
+
+        document.getElementById('copy-file-btn').addEventListener('click', () => {
+            const currentContent = projectFiles[activeFileIndex].content;
+            
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = currentContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyLabel = document.getElementById('copy-btn-label');
+            copyLabel.innerText = 'Copied!';
+            setTimeout(() => {
+                copyLabel.innerText = 'Copy File';
+            }, 2000);
+        });
+
+        function loadIframePreview(adminEnabled) {
+            const iframe = document.getElementById('preview-iframe');
+            
+            const htmlFile = projectFiles.find(f => f.path === 'index.html').content;
+            const cssFile = projectFiles.find(f => f.path === 'assets/css/styles.css').content;
+            const formJsFile = projectFiles.find(f => f.path === 'assets/js/form.js').content;
+            const adminJsFile = projectFiles.find(f => f.path === 'assets/js/admin.js').content;
+
+            // Injects modular files directly into an inlined bundle for the iframe
+            let bundledHtml = htmlFile.replace(
+                '<link rel="stylesheet" href="assets/css/styles.css">',
+                `<style>${cssFile}</style>`
+            );
+            
+            bundledHtml = bundledHtml.replace(
+                '<script src="assets/js/form.js"><\\/script>',
+                `<script>${formJsFile}<\\/script>`
+            );
+
+            // Mock window.location.search inside iframe if admin preview is toggled
+            const adminMock = adminEnabled 
+                ? '<script>try { const origUrl = new URL(window.location.href); origUrl.searchParams.set("admin", "true"); window.history.replaceState({}, "", origUrl); } catch(e){} <\\/script>'
+                : '';
+
+            bundledHtml = bundledHtml.replace(
+                '<script src="assets/js/admin.js"><\\/script>',
+                `${adminMock}<script>${adminJsFile}<\\/script>`
+            );
+
+            iframe.srcdoc = bundledHtml;
+        }
+
+        // Toggle Preview Modal
+        const previewContainer = document.getElementById('preview-container');
+        const togglePreviewBtn = document.getElementById('toggle-preview-btn');
+        const previewBtnText = document.getElementById('preview-btn-text');
+        const closePreviewBtn = document.getElementById('close-preview-btn');
+        const toggleAdminPreviewBtn = document.getElementById('toggle-admin-preview-btn');
+
+        togglePreviewBtn.addEventListener('click', () => {
+            const isHidden = previewContainer.classList.contains('hidden');
+            if (isHidden) {
+                previewContainer.classList.remove('hidden');
+                previewBtnText.innerText = 'Hide Preview';
+                loadIframePreview(isLiveAdmin);
+            } else {
+                previewContainer.classList.add('hidden');
+                previewBtnText.innerText = 'Test Live Page';
+            }
+        });
+
+        closePreviewBtn.addEventListener('click', () => {
+            previewContainer.classList.add('hidden');
+            previewBtnText.innerText = 'Test Live Page';
+        });
+
+        toggleAdminPreviewBtn.addEventListener('click', () => {
+            isLiveAdmin = !isLiveAdmin;
+            const adminLabel = document.getElementById('admin-mode-text');
+            if (isLiveAdmin) {
+                adminLabel.innerText = 'Admin Active (Yellow Outlines)';
+                toggleAdminPreviewBtn.className = 'px-2.5 py-1 bg-amber-500 text-slate-900 font-bold rounded text-xs transition-all flex items-center gap-1';
+            } else {
+                adminLabel.innerText = 'Toggle Admin Mode (?admin=true)';
+                toggleAdminPreviewBtn.className = 'px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-xs font-medium hover:bg-amber-500/30 transition-all flex items-center gap-1';
+            }
+            loadIframePreview(isLiveAdmin);
+        });
+
+        // Initial setup
+        renderFileList();
+        selectFile(0);
     </script>
-    <script src="assets/js/form.js"></script>
-    <script src="assets/js/admin.js"></script>
 </body>
 </html>
